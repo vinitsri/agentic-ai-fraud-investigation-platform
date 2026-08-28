@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fraud Platform — Animated Data Flow</title>
+  <style>
+    :root {
+      --bg: #0b1220;
+      --panel: #121c2e;
+      --panel-2: #182338;
+      --border: rgba(148, 163, 184, 0.18);
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --detect: #38bdf8;
+      --investigate: #a78bfa;
+      --decide: #34d399;
+      --warn: #fbbf24;
+      --danger: #f87171;
+      --glow: rgba(56, 189, 248, 0.35);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 15% 10%, rgba(56, 189, 248, 0.08), transparent 35%),
+        radial-gradient(circle at 85% 20%, rgba(167, 139, 250, 0.08), transparent 30%),
+        radial-gradient(circle at 50% 100%, rgba(52, 211, 153, 0.06), transparent 40%),
+        var(--bg);
+    }
+
+    .page {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 3rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 1.75rem;
+    }
+
+    header h1 {
+      margin: 0 0 0.5rem;
+      font-size: clamp(1.5rem, 3vw, 2rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    header p {
+      margin: 0 auto;
+      max-width: 640px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      justify-content: center;
+      margin-bottom: 1rem;
+    }
+
+    .tab {
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--muted);
+      padding: 0.55rem 1rem;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.25s ease;
+    }
+
+    .tab.active {
+      color: var(--text);
+      border-color: rgba(56, 189, 248, 0.45);
+      background: linear-gradient(180deg, rgba(56, 189, 248, 0.16), rgba(56, 189, 248, 0.06));
+      box-shadow: 0 0 24px rgba(56, 189, 248, 0.12);
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1.25rem;
+    }
+
+    .btn {
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--text);
+      padding: 0.5rem 1rem;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      transition: transform 0.15s ease, border-color 0.2s ease;
+    }
+
+    .btn:hover { border-color: rgba(56, 189, 248, 0.4); transform: translateY(-1px); }
+
+    .step-indicator {
+      color: var(--muted);
+      font-size: 0.875rem;
+      min-width: 180px;
+      text-align: center;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1.4fr 0.9fr;
+      gap: 1rem;
+    }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+
+    .diagram-card, .detail-card {
+      background: rgba(18, 28, 46, 0.92);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      overflow: hidden;
+      backdrop-filter: blur(8px);
+    }
+
+    .diagram-card { min-height: 420px; position: relative; }
+
+    .diagram-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .legend {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    svg { width: 100%; height: auto; display: block; }
+
+    .node rect {
+      fill: var(--panel-2);
+      stroke: var(--border);
+      stroke-width: 1.5;
+      rx: 12;
+      transition: all 0.35s ease;
+    }
+
+    .node.active rect {
+      stroke-width: 2;
+      filter: drop-shadow(0 0 12px var(--glow));
+    }
+
+    .node.detect.active rect { stroke: var(--detect); fill: rgba(56, 189, 248, 0.12); }
+    .node.investigate.active rect { stroke: var(--investigate); fill: rgba(167, 139, 250, 0.12); }
+    .node.decide.active rect { stroke: var(--decide); fill: rgba(52, 211, 153, 0.12); }
+    .node.neutral.active rect { stroke: var(--warn); fill: rgba(251, 191, 36, 0.1); }
+
+    .node text {
+      fill: var(--text);
+      font-size: 12px;
+      font-weight: 600;
+      text-anchor: middle;
+      pointer-events: none;
+    }
+
+    .node .sub {
+      fill: var(--muted);
+      font-size: 10px;
+      font-weight: 500;
+    }
+
+    .edge {
+      fill: none;
+      stroke: rgba(148, 163, 184, 0.35);
+      stroke-width: 2;
+      stroke-linecap: round;
+    }
+
+    .edge.active {
+      stroke: var(--detect);
+      stroke-dasharray: 8 10;
+      animation: dash 1.1s linear infinite;
+    }
+
+    .edge.investigate.active { stroke: var(--investigate); }
+    .edge.decide.active { stroke: var(--decide); }
+
+    @keyframes dash {
+      to { stroke-dashoffset: -36; }
+    }
+
+    .packet {
+      fill: #fff;
+      opacity: 0;
+      filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.8));
+    }
+
+    .packet.visible { opacity: 1; }
+
+    .layer-band {
+      fill: rgba(255, 255, 255, 0.02);
+      stroke: rgba(255, 255, 255, 0.05);
+    }
+
+    .layer-label {
+      fill: var(--muted);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .detail-card { padding: 1.1rem 1.15rem 1.25rem; }
+
+    .detail-card h2 {
+      margin: 0 0 0.35rem;
+      font-size: 1.05rem;
+    }
+
+    .detail-card .phase {
+      display: inline-block;
+      margin-bottom: 0.85rem;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      border: 1px solid var(--border);
+      color: var(--detect);
+      background: rgba(56, 189, 248, 0.08);
+    }
+
+    .detail-card p {
+      margin: 0 0 1rem;
+      color: var(--muted);
+      line-height: 1.65;
+      font-size: 0.92rem;
+    }
+
+    .steps {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: 0.55rem;
+    }
+
+    .steps li {
+      display: grid;
+      grid-template-columns: 28px 1fr;
+      gap: 0.65rem;
+      align-items: start;
+      padding: 0.65rem 0.75rem;
+      border-radius: 12px;
+      border: 1px solid transparent;
+      transition: all 0.3s ease;
+      color: var(--muted);
+      font-size: 0.88rem;
+      line-height: 1.45;
+    }
+
+    .steps li.active {
+      color: var(--text);
+      border-color: rgba(56, 189, 248, 0.25);
+      background: rgba(56, 189, 248, 0.08);
+    }
+
+    .steps li .num {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      background: var(--panel);
+      border: 1px solid var(--border);
+    }
+
+    .steps li.active .num {
+      background: var(--detect);
+      color: #0b1220;
+      border-color: transparent;
+    }
+
+    .footer-note {
+      margin-top: 1rem;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <h1>Animated Data Flow</h1>
+      <p>Watch how a transaction moves through the fraud platform — from today's rules API to the full event-driven, agent-assisted pipeline.</p>
+    </header>
+
+    <div class="tabs" role="tablist">
+      <button class="tab active" data-flow="phase3">Today · Phase 3 API</button>
+      <button class="tab" data-flow="full">Future · Full Platform</button>
+      <button class="tab" data-flow="layers">3-Layer Overview</button>
+    </div>
+
+    <div class="controls">
+      <button class="btn" id="playBtn">Pause</button>
+      <button class="btn" id="restartBtn">Restart</button>
+      <div class="step-indicator" id="stepIndicator">Step 1 of 6</div>
+    </div>
+
+    <div class="layout">
+      <section class="diagram-card">
+        <div class="diagram-header">
+          <span id="diagramTitle">Phase 3 — HTTP evaluation</span>
+          <div class="legend">
+            <span><i class="dot" style="background:var(--detect)"></i> Detect</span>
+            <span><i class="dot" style="background:var(--investigate)"></i> Investigate</span>
+            <span><i class="dot" style="background:var(--decide)"></i> Decide</span>
+          </div>
+        </div>
+        <svg id="diagram" viewBox="0 0 920 420" aria-label="Animated architecture diagram"></svg>
+      </section>
+
+      <aside class="detail-card">
+        <div class="phase" id="phaseBadge">Available now</div>
+        <h2 id="detailTitle">Send evaluation request</h2>
+        <p id="detailBody">A client calls the fraud-service REST API with a transaction ID.</p>
+        <ol class="steps" id="stepsList"></ol>
+      </aside>
+    </div>
+
+    <p class="footer-note">Open this file locally: <code>open docs/architecture/interactive-data-flow.html</code></p>
+  </div>
+
+  <script>
+    const flows = {
+      phase3: {
+        title: "Phase 3 — HTTP evaluation",
+        badge: "Available now",
+        steps: [
+          { title: "Send evaluation request", body: "Client calls POST /api/v1/fraud/evaluate/{transactionId}?persist=true.", node: "client", edge: null },
+          { title: "Route to service", body: "FraudDetectionController forwards the request to FraudDetectionService.", node: "api", edge: "e1" },
+          { title: "Load context from PostgreSQL", body: "Transaction, customer, device, login history, and prior activity are loaded.", node: "db", edge: "e2" },
+          { title: "Run deterministic rules", body: "Seven rules evaluate patterns and produce weighted evidence.", node: "rules", edge: "e3" },
+          { title: "Persist alert (if threshold met)", body: "When fraud_score crosses the threshold, a row is saved to fraud_alerts.", node: "db", edge: "e4" },
+          { title: "Return JSON response", body: "Client receives alert_id, fraud_score, triggered_rules, severity, evidence, and status.", node: "client", edge: "e5" }
+        ],
+        nodes: [
+          { id: "client", label: "Client", sub: "curl / app", x: 40, y: 170, w: 120, h: 56, kind: "neutral" },
+          { id: "api", label: "fraud-service", sub: "REST API", x: 210, y: 170, w: 130, h: 56, kind: "detect" },
+          { id: "svc", label: "Detection Service", sub: "orchestration", x: 390, y: 170, w: 150, h: 56, kind: "detect" },
+          { id: "db", label: "PostgreSQL", sub: "facts + alerts", x: 590, y: 90, w: 130, h: 56, kind: "neutral" },
+          { id: "rules", label: "Rules Engine", sub: "7 deterministic rules", x: 590, y: 250, w: 150, h: 56, kind: "detect" },
+          { id: "response", label: "JSON Response", sub: "score + evidence", x: 780, y: 170, w: 120, h: 56, kind: "decide" }
+        ],
+        edges: [
+          { id: "e1", from: "client", to: "api", kind: "detect" },
+          { id: "e2", from: "api", to: "svc", kind: "detect" },
+          { id: "e3", from: "svc", to: "db", kind: "detect" },
+          { id: "e4", from: "svc", to: "rules", kind: "detect" },
+          { id: "e5", from: "rules", to: "response", kind: "decide" },
+          { id: "e6", from: "svc", to: "response", kind: "decide" }
+        ]
+      },
+      full: {
+        title: "Full platform — event-driven pipeline",
+        badge: "Phases 4–20",
+        steps: [
+          { title: "Transaction event published", body: "Payment system emits a new transaction to Kafka.", node: "pay", edge: null },
+          { title: "Fraud service consumes event", body: "fraud-service reads the stream and builds evaluation context.", node: "kafka", edge: "f1" },
+          { title: "Rules + ML scoring", body: "Deterministic rules and ML model compute fraud_score quickly.", node: "fds", edge: "f2" },
+          { title: "Store fraud alert", body: "Suspicious transactions create an alert record in PostgreSQL.", node: "db", edge: "f3" },
+          { title: "AI investigation", body: "Supervisor agent routes specialist agents; tools fetch facts only.", node: "ai", edge: "f4" },
+          { title: "Policy + human decision", body: "Policy engine returns APPROVE, BLOCK, or MANUAL_REVIEW for analysts.", node: "policy", edge: "f5" }
+        ],
+        nodes: [
+          { id: "pay", label: "Payment System", sub: "source", x: 30, y: 170, w: 130, h: 56, kind: "neutral" },
+          { id: "kafka", label: "Kafka", sub: "event stream", x: 190, y: 170, w: 110, h: 56, kind: "detect" },
+          { id: "fds", label: "fraud-service", sub: "rules + ML", x: 340, y: 170, w: 130, h: 56, kind: "detect" },
+          { id: "db", label: "PostgreSQL", sub: "alerts + history", x: 500, y: 90, w: 130, h: 56, kind: "neutral" },
+          { id: "ai", label: "ai-service", sub: "LangGraph agents", x: 500, y: 250, w: 130, h: 56, kind: "investigate" },
+          { id: "policy", label: "Policy Engine", sub: "deterministic", x: 670, y: 170, w: 130, h: 56, kind: "decide" },
+          { id: "analyst", label: "Human Analyst", sub: "manual review", x: 830, y: 170, w: 120, h: 56, kind: "decide" }
+        ],
+        edges: [
+          { id: "f1", from: "pay", to: "kafka", kind: "detect" },
+          { id: "f2", from: "kafka", to: "fds", kind: "detect" },
+          { id: "f3", from: "fds", to: "db", kind: "detect" },
+          { id: "f4", from: "fds", to: "ai", kind: "investigate" },
+          { id: "f5", from: "ai", to: "policy", kind: "investigate" },
+          { id: "f6", from: "policy", to: "analyst", kind: "decide" }
+        ]
+      },
+      layers: {
+        title: "Three layers — detect, investigate, decide",
+        badge: "Conceptual model",
+        steps: [
+          { title: "Detect suspicious activity", body: "Kafka feeds fraud-service where rules and ML produce alerts.", node: "detect", edge: null },
+          { title: "Investigate with AI agents", body: "Agents explain evidence using read-only tools — no invented facts.", node: "investigate", edge: "l1" },
+          { title: "Decide under policy", body: "Policy engine maps recommendations to APPROVE, REVIEW, or BLOCK.", node: "decide", edge: "l2" },
+          { title: "Human oversight", body: "Analysts handle edge cases; every action remains auditable.", node: "human", edge: "l3" }
+        ],
+        bands: [
+          { id: "detect", label: "1 · Detect", x: 30, y: 40, w: 860, h: 90, color: "rgba(56,189,248,0.08)" },
+          { id: "investigate", label: "2 · Investigate", x: 30, y: 150, w: 860, h: 90, color: "rgba(167,139,250,0.08)" },
+          { id: "decide", label: "3 · Decide", x: 30, y: 260, w: 860, h: 90, color: "rgba(52,211,153,0.08)" }
+        ],
+        nodes: [
+          { id: "txn", label: "Transaction", sub: "event", x: 60, y: 62, w: 110, h: 46, kind: "detect" },
+          { id: "fds", label: "Fraud Service", sub: "rules + ML", x: 220, y: 62, w: 130, h: 46, kind: "detect" },
+          { id: "alert", label: "Fraud Alert", sub: "structured", x: 400, y: 62, w: 110, h: 46, kind: "detect" },
+          { id: "supervisor", label: "Supervisor Agent", sub: "routes work", x: 220, y: 172, w: 140, h: 46, kind: "investigate" },
+          { id: "agents", label: "Specialist Agents", sub: "tools + RAG", x: 420, y: 172, w: 150, h: 46, kind: "investigate" },
+          { id: "report", label: "Evidence Report", sub: "explainable", x: 620, y: 172, w: 130, h: 46, kind: "investigate" },
+          { id: "policy", label: "Policy Engine", sub: "deterministic", x: 220, y: 282, w: 130, h: 46, kind: "decide" },
+          { id: "outcomes", label: "Approve / Review / Block", sub: "final routing", x: 420, y: 282, w: 180, h: 46, kind: "decide" },
+          { id: "human", label: "Human Analyst", sub: "edge cases", x: 650, y: 282, w: 130, h: 46, kind: "decide" }
+        ],
+        edges: [
+          { id: "l1", from: "alert", to: "supervisor", kind: "investigate" },
+          { id: "l2", from: "report", to: "policy", kind: "decide" },
+          { id: "l3", from: "policy", to: "human", kind: "decide" },
+          { id: "l4", from: "txn", to: "fds", kind: "detect" },
+          { id: "l5", from: "fds", to: "alert", kind: "detect" },
+          { id: "l6", from: "supervisor", to: "agents", kind: "investigate" },
+          { id: "l7", from: "agents", to: "report", kind: "investigate" },
+          { id: "l8", from: "policy", to: "outcomes", kind: "decide" }
+        ]
+      }
+    };
+
+    const diagram = document.getElementById("diagram");
+    const stepsList = document.getElementById("stepsList");
+    const stepIndicator = document.getElementById("stepIndicator");
+    const detailTitle = document.getElementById("detailTitle");
+    const detailBody = document.getElementById("detailBody");
+    const phaseBadge = document.getElementById("phaseBadge");
+    const diagramTitle = document.getElementById("diagramTitle");
+    const playBtn = document.getElementById("playBtn");
+
+    let currentFlow = "phase3";
+    let stepIndex = 0;
+    let playing = true;
+    let timer = null;
+
+    function center(node) {
+      return { cx: node.x + node.w / 2, cy: node.y + node.h / 2 };
+    }
+
+    function edgePath(from, to) {
+      const a = center(from);
+      const b = center(to);
+      const dx = Math.abs(b.cx - a.cx) * 0.45;
+      return `M ${a.cx} ${a.cy} C ${a.cx + dx} ${a.cy}, ${b.cx - dx} ${b.cy}, ${b.cx} ${b.cy}`;
+    }
+
+    function renderDiagram(flowKey) {
+      const flow = flows[flowKey];
+      diagram.innerHTML = "";
+
+      if (flow.bands) {
+        flow.bands.forEach((band) => {
+          const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+          g.innerHTML = `
+            <rect class="layer-band" x="${band.x}" y="${band.y}" width="${band.w}" height="${band.h}" rx="14" fill="${band.color}"></rect>
+            <text class="layer-label" x="${band.x + 16}" y="${band.y + 22}">${band.label}</text>
+          `;
+          diagram.appendChild(g);
+        });
+      }
+
+      const nodeMap = Object.fromEntries(flow.nodes.map((n) => [n.id, n]));
+
+      flow.edges.forEach((edge) => {
+        const from = nodeMap[edge.from];
+        const to = nodeMap[edge.to];
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.setAttribute("d", edgePath(from, to));
+        path.setAttribute("id", edge.id);
+        path.setAttribute("class", `edge ${edge.kind}`);
+        diagram.appendChild(path);
+
+        const packet = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        packet.setAttribute("r", "5");
+        packet.setAttribute("class", "packet");
+        packet.dataset.edge = edge.id;
+        const motion = document.createElementNS("http://www.w3.org/2000/svg", "animateMotion");
+        motion.setAttribute("dur", "1.8s");
+        motion.setAttribute("repeatCount", "indefinite");
+        motion.setAttribute("path", edgePath(from, to));
+        packet.appendChild(motion);
+        diagram.appendChild(packet);
+      });
+
+      flow.nodes.forEach((node) => {
+        const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        g.setAttribute("class", `node ${node.kind}`);
+        g.setAttribute("id", `node-${node.id}`);
+        g.innerHTML = `
+          <rect x="${node.x}" y="${node.y}" width="${node.w}" height="${node.h}" rx="12"></rect>
+          <text x="${node.x + node.w / 2}" y="${node.y + 24}">${node.label}</text>
+          <text class="sub" x="${node.x + node.w / 2}" y="${node.y + 40}">${node.sub || ""}</text>
+        `;
+        diagram.appendChild(g);
+      });
+    }
+
+    function renderSteps(flowKey) {
+      const flow = flows[flowKey];
+      stepsList.innerHTML = "";
+      flow.steps.forEach((step, i) => {
+        const li = document.createElement("li");
+        li.dataset.index = i;
+        li.innerHTML = `<span class="num">${i + 1}</span><span>${step.title}</span>`;
+        stepsList.appendChild(li);
+      });
+    }
+
+    function applyStep(flowKey, index) {
+      const flow = flows[flowKey];
+      const step = flow.steps[index];
+
+      diagramTitle.textContent = flow.title;
+      phaseBadge.textContent = flow.badge;
+      detailTitle.textContent = step.title;
+      detailBody.textContent = step.body;
+      stepIndicator.textContent = `Step ${index + 1} of ${flow.steps.length}`;
+
+      document.querySelectorAll(".node").forEach((n) => n.classList.remove("active"));
+      document.querySelectorAll(".edge").forEach((e) => e.classList.remove("active"));
+      document.querySelectorAll(".packet").forEach((p) => p.classList.remove("visible"));
+
+      if (step.node) {
+        const nodeEl = document.getElementById(`node-${step.node}`);
+        if (nodeEl) nodeEl.classList.add("active");
+      }
+      if (step.edge) {
+        const edgeEl = document.getElementById(step.edge);
+        if (edgeEl) edgeEl.classList.add("active");
+        document.querySelectorAll(`.packet[data-edge="${step.edge}"]`).forEach((p) => p.classList.add("visible"));
+      }
+
+      stepsList.querySelectorAll("li").forEach((li, i) => {
+        li.classList.toggle("active", i === index);
+      });
+    }
+
+    function startTimer() {
+      clearInterval(timer);
+      timer = setInterval(() => {
+        const flow = flows[currentFlow];
+        stepIndex = (stepIndex + 1) % flow.steps.length;
+        applyStep(currentFlow, stepIndex);
+      }, 3200);
+    }
+
+    function setFlow(flowKey) {
+      currentFlow = flowKey;
+      stepIndex = 0;
+      renderDiagram(flowKey);
+      renderSteps(flowKey);
+      applyStep(flowKey, 0);
+      if (playing) startTimer();
+    }
+
+    document.querySelectorAll(".tab").forEach((tab) => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
+        tab.classList.add("active");
+        setFlow(tab.dataset.flow);
+      });
+    });
+
+    playBtn.addEventListener("click", () => {
+      playing = !playing;
+      playBtn.textContent = playing ? "Pause" : "Play";
+      if (playing) startTimer();
+      else clearInterval(timer);
+    });
+
+    document.getElementById("restartBtn").addEventListener("click", () => {
+      stepIndex = 0;
+      applyStep(currentFlow, 0);
+      if (playing) startTimer();
+    });
+
+    setFlow("phase3");
+  </script>
+</body>
+</html>

@@ -1,0 +1,45 @@
+server:
+  port: ${FRAUD_SERVICE_PORT:8080}
+
+spring:
+  application:
+    name: fraud-service
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:fraud_platform}
+    username: ${POSTGRES_USER:fraud_user}
+    password: ${POSTGRES_PASSWORD:change_me_in_production}
+    driver-class-name: org.postgresql.Driver
+
+fraud:
+  rules:
+    alert-threshold: 0.25
+    high-amount-multiplier: 5.0
+    high-amount-absolute: 3000.0
+    velocity-window-minutes: 5
+    velocity-threshold: 5
+    failed-login-window-minutes: 30
+    failed-login-threshold: 3
+    geographic-anomaly-km: 500.0
+    impossible-travel-km: 800.0
+    impossible-travel-hours: 2.0
+    new-device-max-age-hours: 48
+    merchant-risk-threshold: 0.6
+    weights:
+      high-transaction-amount: 0.25
+      new-device: 0.15
+      new-location: 0.15
+      transaction-velocity: 0.20
+      multiple-failed-logins: 0.20
+      unusual-merchant-category: 0.10
+      geographic-anomaly: 0.25
+    severity:
+      critical: 0.85
+      high: 0.65
+      medium: 0.45
+      low: 0.25
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

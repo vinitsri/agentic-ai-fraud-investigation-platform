@@ -1,0 +1,10 @@
+#!/usr/bin/env sh
+# Strip Cursor agent attribution from commit messages (REQ: human-only commits).
+set -eu
+
+MSG_FILE=$1
+
+sed -i.bak '/^Co-authored-by: Cursor /d' "$MSG_FILE" 2>/dev/null || sed -i '/^Co-authored-by: Cursor /d' "$MSG_FILE"
+sed -i.bak '/^Co-authored-by:.*cursoragent@cursor\.com/d' "$MSG_FILE" 2>/dev/null || sed -i '/^Co-authored-by:.*cursoragent@cursor\.com/d' "$MSG_FILE"
+sed -i.bak '/^Made-with: Cursor/d' "$MSG_FILE" 2>/dev/null || sed -i '/^Made-with: Cursor/d' "$MSG_FILE"
+rm -f "${MSG_FILE}.bak"

@@ -1,0 +1,60 @@
+# Environment
+.env
+.env.local
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# Java
+target/
+*.class
+*.jar
+!gradle-wrapper.jar
+.idea/
+*.iml
+
+# Node / React (Phase 13)
+node_modules/
+frontend/fraud-analyst-ui/build/
+frontend/fraud-analyst-ui/dist/
+
+# ML
+ml/notebooks/.ipynb_checkpoints/
+*.pkl
+*.joblib
+models/
+
+# Data (never commit synthetic output at scale)
+data/
+*.csv
+*.parquet
+!evaluation/datasets/*.json
+
+# Docker
+.docker/
+
+# OS / IDE
+.DS_Store
+.vscode/
+*.swp
+
+# Logs & reports
+*.log
+evaluation/reports/*.html
+evaluation/reports/*.json
+!evaluation/reports/.gitkeep
+
+# Secrets
+secrets/
+*.pem
+*.key

@@ -1,0 +1,11 @@
+package com.fraud.platform.domain;
+
+public enum RuleName {
+    HIGH_TRANSACTION_AMOUNT,
+    NEW_DEVICE,
+    NEW_LOCATION,
+    TRANSACTION_VELOCITY,
+    MULTIPLE_FAILED_LOGINS,
+    UNUSUAL_MERCHANT_CATEGORY,
+    GEOGRAPHIC_ANOMALY
+}
